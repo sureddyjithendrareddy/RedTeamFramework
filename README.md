@@ -15,45 +15,6 @@ Automates the complete penetration testing kill chain — from recon to reportin
 
 </div>
 
----
-
-## 📸 Screenshots
-
-### 🖥️ Web Dashboard — Overview
-![Dashboard Overview](https://raw.githubusercontent.com/sureddyjithendrareddy/RedTeamFramework/main/screenshots/dashboard_overview.png)
-
-> Real-time mission overview with risk scoring, findings table, and live terminal output.
-
----
-
-### 📡 C2 Console — Agent Management
-![C2 Console](https://raw.githubusercontent.com/sureddyjithendrareddy/RedTeamFramework/main/screenshots/c2_console.png)
-
-> Command & Control console with connected agents, interactive shell, and live command execution.
-
----
-
-### 🔍 Recon Results
-![Recon Results](https://raw.githubusercontent.com/sureddyjithendrareddy/RedTeamFramework/main/screenshots/recon_results.png)
-
-> Automated subdomain enumeration, port scanning, and Shodan OSINT results.
-
----
-
-### 💀 Exploitation — CVE Scanner
-![Exploitation](https://raw.githubusercontent.com/sureddyjithendrareddy/RedTeamFramework/main/screenshots/exploitation.png)
-
-> CVE vulnerability scanner with severity ratings, payload generator, and web attack testing.
-
----
-
-### 📄 Auto-Generated PDF Report
-![PDF Report](https://raw.githubusercontent.com/sureddyjithendrareddy/RedTeamFramework/main/screenshots/report.png)
-
-> Professional penetration test report auto-generated with findings, risk scores, and remediation advice.
-
----
-
 ## 🎯 Features
 
 | Phase | Capability |
